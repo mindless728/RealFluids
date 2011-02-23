@@ -13,6 +13,7 @@ import org.bukkit.plugin.PluginDescriptionFile;
 import org.bukkit.plugin.PluginLoader;
 import org.bukkit.scheduler.BukkitScheduler;
 import org.bukkit.Server;
+import org.bukkit.World;
 
 import java.io.File;
 
@@ -25,21 +26,26 @@ import java.util.LinkedHashSet;
  */
 public class RealFluids extends JavaPlugin implements Runnable {
     BukkitScheduler scheduler;
-    LinkedHashSet<Block> waterFlows;
-    HashMap<Block,Integer> waterData;
     RealFluidsBlockListener blockListener;
-    int waterStartLevel = 4500;
-    double minimumDifferencelevelFraction = 0.10;
+	LinkedHashSet<RealFlowEvent> flowEvents;
+	HashMap<RealFluidsBlock,RealFluidsBlock> blockData;
+	RealFluidsBlock tempBlock;
+	
+    int waterStartLevel = 2000;
+	int lavaStartLevel = 1000;
+    double minimumDifferenceLevelFraction = 0.05;
     int repeatRate = 1;
     int simsMaxPerRepeat = Integer.MAX_VALUE;
     double simsPerRepeatFraction = 0.5;
     double flowDownFraction = 0.5;
     
-    public RealFluids(PluginLoader pluginLoader, Server instance, PluginDescriptionFile desc, File folder, File plugin, ClassLoader cLoader) {
-        super(pluginLoader, instance, desc, folder, plugin, cLoader);
-        waterFlows = new LinkedHashSet<Block>();
-        waterData = new HashMap<Block,Integer>();
+    public RealFluids() {
         blockListener = new RealFluidsBlockListener(this);
+		flowEvents = new LinkedHashSet<RealFlowEvent>();
+		blockData = new HashMap<RealFluidsBlock,RealFluidsBlock>();
+		
+		RealFlowEvent.setPlugin(this);
+		tempBlock = new RealFluidsBlock(null,0,0,0,0);
     }
     
     public void onEnable() {
@@ -53,173 +59,254 @@ public class RealFluids extends JavaPlugin implements Runnable {
     }
     
     public void onDisable() {
-        waterFlows.clear();
         System.out.println(getDescription().getName()+" version "+getDescription().getVersion()+" disabled");
     }
-    
-    public void addFluidFlow(Block b) {
-        if(!waterData.containsKey(b))
-            waterData.put(b,new Integer(waterStartLevel));
-        waterFlows.add(b);
-    }
-    
-    public void removeFluidFlow(Block b) {
-        waterFlows.remove(b);
-        waterData.remove(b);
-    }
-    
-    public boolean hasFluidData(Block b) {
-        return waterData.containsKey(b);
-    }
-    
-    public void run() {
-        Block front;
-        int ave;
-        int repeat = (int)(simsPerRepeatFraction*waterFlows.size());
-        if(repeat > simsMaxPerRepeat)
-            repeat = simsMaxPerRepeat;
-        //if(waterFlows.size() != 0)
-            //System.out.println("Queue size: "+waterFlows.size());
-        
-        for(int n = 0; n < repeat; ++n) {
-            if(waterFlows.isEmpty())
-                break;
-            front = waterFlows.iterator().next();
-            waterFlows.remove(front);
-            if(front.getTypeId() != 0 && front.getTypeId() != 8 && front.getTypeId() != 9)
-                continue;
-            
-            //test to see if there is an empty block underneath
-            if(canFlowDown(front)) {
-                flowDown(front);
-            } else { //can't go down, spread outwards
-                //get average of 3x3 square
-                ave = get3x3Average(front);
-                if (ave == -1) { //if there was an error, do nothing
-                    continue;
-                }
-
-                //set the level of the surrounding blocks
-                flow3x3Area(front, ave);
-            }
-        }
-        
-        //Garbage Collect
-        garbageCollect();
-        
-    }
-    
-    public int get3x3Average(Block front) {
-        int ave = 0;
-        int blocks = 0;
-        Block temp;
-        for (int i = -1; i < 2; ++i) {
-            for (int j = -1; j < 2; ++j) {
-                if ((i == j || i == -j) && (i != 0 || j != 0)) {
-                    continue;
-                }
-                temp = front.getWorld().getBlockAt(front.getX() + j, front.getY(), front.getZ() + i);
-                if (temp.getTypeId() == 8 || temp.getTypeId() == 9 || temp.getTypeId() == 0 || temp.getTypeId() == 19) {
-                    if (waterData.get(temp) != null) {
-                        ave += waterData.get(temp).intValue();
-                    } else if (temp.getTypeId() == 8 || temp.getTypeId() == 9) {
-                        waterData.put(temp, waterStartLevel);
-                        ave += waterStartLevel;
-                    } else {
-                        waterData.put(temp, 0);
-                    }
-                    blocks += 1;
-                }
-            }
-        }
-        //if (blocks == 0) {
-            //return -1;
-        //}
-        ave /= blocks;
-        return ave;
-    }
-
-    public void flow3x3Area(Block front, int ave) {
-        Block temp;
-        for (int i = -1; i < 2; ++i) {
-            for (int j = -1; j < 2; ++j) {
-                if ((i == j || i == -j) && (i != 0 || j != 0)) {
-                    continue;
-                }
-                temp = front.getWorld().getBlockAt(front.getX() + j, front.getY(), front.getZ() + i);
-                if ((temp.getTypeId() == 8 || temp.getTypeId() == 9 || temp.getTypeId() == 0)) {
-                    if (Math.abs(waterData.get(temp).intValue() - ave) > (int) (waterData.get(temp).intValue() * minimumDifferencelevelFraction)) {
-                        if (ave > 0) {
-                            temp.setTypeId(8);
-                        } else {
-                            temp.setTypeId(0);
-                        }
-                        waterData.put(temp, ave);
-                        
-                        if (i != 0 || j != 0) {
-                            waterFlows.add(temp);
-                        }
-                    }
-                }
-            }
-        }
-    }
-    
-    public void garbageCollect() {
-        if (waterFlows.isEmpty() && !waterData.isEmpty()) {
-            LinkedHashSet<Block> remove = new LinkedHashSet<Block>();
-            for (Block b : waterData.keySet()) {
-                if (waterData.get(b).intValue() == 0) {
-                    remove.add(b);
-                }
-            }
-            for (Block b : remove) {
-                waterData.remove(b);
-            }
-            remove.clear();
-        }
-    }
-    
-    public boolean canFlowDown(Block front) {
-        Block below = front.getWorld().getBlockAt(front.getX(), front.getY()-1, front.getZ());
-        Integer data = waterData.get(below);
-        
-        if(waterData.get(front).intValue() == 0)
-            return false;
-        
-        if(below != null && (
-           below.getTypeId() == 0 ||
-           below.getTypeId() == 8 ||
-           below.getTypeId() == 9)) {
-               if(data == null) {
-                   if(below.getTypeId() == 0) {
-                       waterData.put(below, 0);
-                       return true;
-                   }
-                   waterData.put(below, waterStartLevel);
-                   return false;
-               } else if(data.intValue() == waterStartLevel)
-                   return false;
-               return true;
-           }
-        
-        return false;
-    }
-    
-    public void flowDown(Block front) {
-        Block below = front.getWorld().getBlockAt(front.getX(), front.getY()-1, front.getZ());
-        int flowAmount = (int)(waterData.get(front).intValue() * flowDownFraction);
-        if((waterStartLevel - waterData.get(below).intValue()) < flowAmount)
-            flowAmount = waterStartLevel - waterData.get(below).intValue();
-        if(flowAmount == 0)
-            flowAmount = 1;
-        waterData.put(front,waterData.get(front).intValue() - flowAmount);
-        waterData.put(below,waterData.get(below).intValue() + flowAmount);
-        if(waterData.get(front).intValue() == 0)
-            front.setTypeId(0);
-        below.setTypeId(8);
-        
-        waterFlows.add(below);
-        waterFlows.add(front);
-    }
+	
+	public void addFlowEvent(RealFluidsBlock block) {
+		flowEvents.add(new RealFlowEvent(block));
+	}
+	
+	public RealFluidsBlock getBlock(int x, int y, int z, World world) {
+		tempBlock.setLocation(x,y,z);
+		return getBlock(tempBlock, world);
+	}
+		
+	public RealFluidsBlock getBlock(RealFluidsBlock lookup, World world) {
+		RealFluidsBlock block = null;
+		int blockId = 0;
+		
+		if(blockData.containsKey(lookup)) {
+			block = blockData.get(lookup);
+		} else {
+			if(lookup.getY() >= 0 && lookup.getY() <= 127) {
+				block = new RealFluidsBlock(world, lookup.getX(), lookup.getY(), lookup.getZ(), 0);
+				blockId = block.getTypeId();
+				if(blockId == 8 || blockId == 9)
+					block.setLevel(waterStartLevel);
+				else if(blockId == 10 || blockId == 11)
+					block.setLevel(lavaStartLevel);
+				blockData.put(block, block);
+			}
+		}
+		
+		return block;
+	}
+	
+	public RealFluidsBlock getAboveBlock(RealFluidsBlock block) {
+		tempBlock.setLocation(block.getX(), block.getY()+1, block.getZ());
+		return getBlock(tempBlock, block.getWorld());
+	}
+	
+	public RealFluidsBlock getBelowBlock(RealFluidsBlock block) {
+		tempBlock.setLocation(block.getX(), block.getY()-1, block.getZ());
+		return getBlock(tempBlock, block.getWorld());
+	}
+	
+	public RealFluidsBlock[][] get3x3Blocks(RealFluidsBlock block) {
+		RealFluidsBlock[][] blocks = new RealFluidsBlock[3][3];
+		for(int i = -1; i < 2; ++i) {
+			for(int j = -1; j < 2; ++j) {
+				if(i == 0 && j == 0)
+					blocks[i+1][j+1] = block;
+				else {
+					tempBlock.setLocation(block.getX()+j, block.getY(), block.getZ()+i);
+					blocks[i+1][j+1] = getBlock(tempBlock, block.getWorld());
+				}
+			}
+		}
+		return blocks;
+	}
+	
+	public int get3x3Average(RealFluidsBlock[][] blocks) {
+		int ave = 0;
+		int fluids = 0;
+		RealFluidsBlock center = blocks[1][1];
+		
+		for(int i = -1; i < 2; ++i) {
+			for(int j = -1; j < 2; ++j) {
+				if((i == j || i == -j) && (i != 0 || j != 0))
+					continue;
+				//System.out.println("i: "+i+", j: "+j+", type: "+blocks[i+1][j+1].getTypeId());
+				if((blocks[i+1][j+1].getTypeId() == 0) || sameFluid(blocks[i+1][j+1].getTypeId(), center.getTypeId())) {
+					ave += blocks[i+1][j+1].getLevel();
+					++fluids;
+				} else if(blocks[i+1][j+1].getTypeId() == 19)
+					++fluids;
+			}
+		}
+		
+		/*if(fluids != 0 && center.getY() >= 64)
+			System.out.println("Amount: "+ave+", Blocks: "+fluids+", Ave: "+ave/fluids);*/
+		
+		if(fluids != 0)
+			return ave / fluids;
+		return -1;
+	}
+	
+	public RealFluidsBlock[][][] get3x3x3Blocks(RealFluidsBlock block) {
+		RealFluidsBlock[][][] blocks = new RealFluidsBlock[3][3][3];
+		for(int i = -1; i < 2; ++i) {
+			for(int j = -1; j < 2; ++j) {
+				for(int k = -1; k < 2; ++k) {
+					if(i == 0 && j == 0 && k == 0)
+						blocks[i+1][j+1][k+1] = block;
+					else {
+						tempBlock.setLocation(block.getX()+k, block.getY()+i, block.getZ()+j);
+						blocks[i+1][j+1][k+1] = getBlock(tempBlock, block.getWorld());
+					}
+				}
+			}
+		}
+		return blocks;
+	}
+	
+	public boolean blockCanFlowDown(RealFluidsBlock block) {
+		RealFluidsBlock below = getBelowBlock(block);
+		if(below == null)
+			return false;
+		
+		int blockId = block.getTypeId();
+		int belowId = below.getTypeId();
+		int startLevel = ((blockId == 8 || blockId == 9) ? waterStartLevel : lavaStartLevel);
+		
+		if((belowId == 0 || sameFluid(blockId, belowId)) && (below.getLevel() < startLevel) && block.getLevel() != 0)
+			return true;
+		
+		return false;
+	}
+	
+	public boolean blockCanFlowUp(RealFluidsBlock block) {
+		RealFluidsBlock above = getAboveBlock(block);
+		if(above == null)
+			return false;
+			
+		int blockId = block.getTypeId();
+		int aboveId = above.getTypeId();
+		int startLevel = ((blockId == 8 || blockId == 9) ? waterStartLevel : lavaStartLevel);
+		
+		if((block.getLevel() > startLevel) && sameFluid(blockId,aboveId) && (block.getLevel() > above.getLevel())) {
+			return true;
+		}
+				
+		return false;
+	}
+	
+	public boolean sameFluid(int aId, int bId) {
+		if((aId == 8 || aId == 9) && (bId == 8 || bId == 9))
+			return true;
+		if((aId == 10 || aId == 11) && (bId == 10 || bId == 11))
+			return true;
+		return false;
+	}
+	
+	public void flowHorizontal(RealFluidsBlock block) {
+		RealFluidsBlock[][] blocks = get3x3Blocks(block);
+		int blockId = block.getTypeId();
+		int ave = get3x3Average(blocks);
+		int diff;
+		int minDiff = (int)(minimumDifferenceLevelFraction * block.getLevel());
+		
+		if(ave == -1) {
+			//System.out.println("Ave: "+ave);
+			return;
+		}
+		
+		for(int i = -1; i < 2; ++i) {
+			for(int j = -1; j < 2; ++j) {
+				if((i == j) || (i == -j))
+					continue;
+				//System.out.println("Start: "+blocks[i][j].getLevel()+", Ave: "+ave);
+				diff = ave - blocks[i+1][j+1].getLevel();
+				minDiff = (int)(minimumDifferenceLevelFraction * blocks[i+1][j+1].getLevel());
+				if((Math.abs(diff) > minDiff) && (blocks[i+1][j+1].getTypeId() == 0 || blocks[i+1][j+1].getTypeId()==19 || sameFluid(blocks[i+1][j+1].getTypeId(),blockId))) {
+					blocks[i+1][j+1].setLevel(blocks[i+1][j+1].getLevel()+diff);
+					if(blocks[i+1][j+1].getTypeId() == 0)
+						blocks[i+1][j+1].setTypeId(blockId);
+					block.setLevel(block.getLevel()-diff);
+					if(ave != 0)
+						flowEvents.add(new RealFlowEvent(blocks[i+1][j+1]));
+				}
+			}
+		}
+		
+		if(ave == 0 || block.getLevel() == 0) {
+			block.setLevel(0);
+			block.setTypeId(0);
+		}
+		if(ave != 0)
+			flowEvents.add(new RealFlowEvent(block));
+		
+		//while(true){}
+	}
+	
+	public void flowDown(RealFluidsBlock block) {
+		RealFluidsBlock below = getBelowBlock(block);
+		int flowAmount = ((int)(flowDownFraction*block.getLevel()));
+		int startLevel = ((block.getTypeId() == 8 || block.getTypeId() == 9)?waterStartLevel:lavaStartLevel);
+		
+		if(flowAmount > (startLevel - below.getLevel()))
+			flowAmount = startLevel - below.getLevel();
+		else if(flowAmount == 0)
+			flowAmount = 1;
+		
+		below.setLevel(below.getLevel()+flowAmount);
+		block.setLevel(block.getLevel()-flowAmount);
+		below.setTypeId(block.getTypeId());
+		if(block.getLevel() == 0)
+			block.setTypeId(0);
+			
+		flowEvents.add(new RealFlowEvent(below));
+		flowEvents.add(new RealFlowEvent(block));
+	}
+	
+	public void flowUp(RealFluidsBlock block) {
+		RealFluidsBlock above = getAboveBlock(block);
+		int startLevel = ((block.getTypeId() == 8 || block.getTypeId() == 9)?waterStartLevel:lavaStartLevel);
+		int diff = block.getLevel()-startLevel;
+		block.setLevel(startLevel);
+		above.setLevel(above.getLevel()+diff);
+		above.setTypeId(block.getTypeId());
+	}
+	
+	public void run() {
+		int sims = (int)(flowEvents.size() * simsPerRepeatFraction);
+		int i = 0;
+		RealFlowEvent front = null;
+		RealFluidsFlowType flow = null;
+		long time;
+		
+		if(sims > simsMaxPerRepeat)
+			sims = simsMaxPerRepeat;
+		else if(sims == 0)
+			sims = 1;
+			
+		time = System.nanoTime();
+		
+		for(i = 0; i < sims; ++i) {
+			if(flowEvents.isEmpty()/* || (time > 25000000)*/)
+				break;
+			
+			front = flowEvents.iterator().next();
+			flowEvents.remove(front);
+			
+			getServer().getPluginManager().callEvent(front);
+			if(front.isCancelled())
+				continue;
+			
+			flow = front.getFlow();
+			if(flow == RealFluidsFlowType.WATER_HORIZONTAL ||
+			   flow == RealFluidsFlowType.LAVA_HORIZONTAL ||
+			   flow == RealFluidsFlowType.AIR_HORIZONTAL) {
+				flowHorizontal(front.getBlock());
+			} else if(flow == RealFluidsFlowType.WATER_DOWN || flow == RealFluidsFlowType.LAVA_DOWN) {
+				flowDown(front.getBlock());
+			} else if(flow == RealFluidsFlowType.WATER_UP || flow == RealFluidsFlowType.LAVA_UP) {
+				flowUp(front.getBlock());
+			}
+		}
+		
+		time = System.nanoTime() - time;
+		/*if(i != 0)
+			System.out.println("Sims: "+i+", Time: "+time+", Sims/s: "+((long)1000000000)*i/time);*/
+	}
 }

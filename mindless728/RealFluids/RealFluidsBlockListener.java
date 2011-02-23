@@ -24,14 +24,27 @@ public class RealFluidsBlockListener extends BlockListener {
     @Override
     public void onBlockPlace(BlockPlaceEvent event) {
         Block block = event.getBlockPlaced();
-        if(block.getTypeId() == 8 || block.getTypeId() == 9)
-            plugin.addFluidFlow(block);
-        plugin.removeFluidFlow(block);
+		RealFluidsBlock rfblock = plugin.getBlock(block.getX(), block.getY(), block.getZ(), block.getWorld());
+		//add flow event if block can flow
+		if(block.getTypeId() == 8 || block.getTypeId() == 9 ||
+		   block.getTypeId() == 10 || block.getTypeId() == 11) {
+			if(block.getTypeId() == 8 || block.getTypeId() == 9)
+				rfblock.setLevel(plugin.waterStartLevel);
+			else
+				rfblock.setLevel(plugin.lavaStartLevel);
+			plugin.addFlowEvent(rfblock);
+		}
+		//try to remove a flow event at that location if it can't
+		else
+			rfblock.setLevel(0);
     }
     
     @Override
     public void onBlockFlow(BlockFromToEvent event) {
-        plugin.addFluidFlow(event.getBlock());
+		//add flow event for fluid
+		Block block = event.getBlock();
+		RealFluidsBlock rfblock = plugin.getBlock(block.getX(), block.getY(), block.getZ(), block.getWorld());
+		plugin.addFlowEvent(rfblock);
         event.setCancelled(true);
     }
 }
