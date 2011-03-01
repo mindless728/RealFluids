@@ -8,6 +8,7 @@ public class RealFlowEvent extends Event implements Cancellable {
     private RealFluidsBlock block;
 	private RealFluidsFlowType flow;
 	boolean cancelled;
+	private static final long serialVersionUID = 1L;
 	
 	RealFlowEvent(RealFluidsBlock b) {
 		super("RealFlowEvent");

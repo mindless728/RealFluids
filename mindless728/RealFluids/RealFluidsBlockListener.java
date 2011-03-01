@@ -6,7 +6,9 @@
 package mindless728.RealFluids;
 
 import org.bukkit.block.Block;
+import org.bukkit.block.BlockDamageLevel;
 import org.bukkit.event.block.BlockListener;
+import org.bukkit.event.block.BlockDamageEvent;
 import org.bukkit.event.block.BlockFromToEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 
@@ -41,10 +43,24 @@ public class RealFluidsBlockListener extends BlockListener {
     
     @Override
     public void onBlockFlow(BlockFromToEvent event) {
-		//add flow event for fluid
-		Block block = event.getBlock();
-		RealFluidsBlock rfblock = plugin.getBlock(block.getX(), block.getY(), block.getZ(), block.getWorld());
-		plugin.addFlowEvent(rfblock);
+		//cancel the flow event as it is not wanted
         event.setCancelled(true);
     }
+	
+	@Override
+	public void onBlockDamage(BlockDamageEvent event) {
+		RealFluidsBlock rfb = new RealFluidsBlock(event.getBlock().getLocation(),0);
+		int tempId = 0;
+		//System.out.println("Block Damaged: "+event.getDamageLevel());
+		
+		if(event.getDamageLevel() == BlockDamageLevel.STOPPED) {
+			//System.out.println("Block Broken: "+rfb.getTypeId());
+			for(RealFluidsBlock block : plugin.getAdjacentBlocks(rfb)) {
+				tempId = block.getTypeId();
+				//System.out.println("Block Adjacent: "+tempId);
+				if(tempId >= 8 && tempId <= 11)
+					plugin.addFlowEvent(block);
+			}
+		}
+	}
 }

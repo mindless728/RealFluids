@@ -1,45 +1,48 @@
 package mindless728.RealFluids;
 
 import org.bukkit.block.Block;
+import org.bukkit.Location;
 import org.bukkit.World;
 
 public class RealFluidsBlock {
-    private World world;
-	private int x;
-	private int y;
-	private int z;
+	Location location;
 	private int fluidLevel;
 	
+	public RealFluidsBlock(Location loc, int level) {
+		this(loc.getWorld(), loc.getBlockX(), loc.getBlockY(), loc.getBlockZ(), level);
+	}
+	
 	public RealFluidsBlock(World w, int x, int y, int z, int level) {
-	    world = w;
-		this.x = x;
-		this.y = y;
-		this.z = z;
+	    location = new Location(w,x,y,z);
 		fluidLevel = level;
 	}
 	
+	public Location getLocation() {
+		return location;
+	}
+	
 	public int getX() {
-	    return x;
+	    return location.getBlockX();
 	}
 	
 	public int getY() {
-	    return y;
+	    return location.getBlockY();
 	}
 	
 	public int getZ() {
-	    return z;
+	    return location.getBlockZ();
 	}
 	
 	public World getWorld() {
-		return world;
+		return location.getWorld();
 	}
 	
 	public void setLocation(int x, int y, int z) {
-		if(world != null)
+		if(location.getWorld() != null)
 			return;
-		this.x = x;
-		this.y = y;
-		this.z = z;
+		location.setX(x);
+		location.setY(y);
+		location.setZ(z);
 	}
 	
 	public int getLevel() {
@@ -52,27 +55,32 @@ public class RealFluidsBlock {
 	}
 	
 	public int getTypeId() {
-	    return world.getBlockTypeIdAt(x, y, z);
+	    return location.getWorld().getBlockTypeIdAt(location);
 	}
 	
 	public void setTypeId(int type) {
-	    world.getBlockAt(x,y,z).setTypeId(type);
+	    location.getBlock().setTypeId(type);
 	}
 	
 	@Override
 	public int hashCode() {
+		return location.hashCode();
+		/*
+		int x = location.getBlockX(),
+		    y = location.getBlockY(),
+			z = location.getBlockZ();
 		return ((y & 0xFF) << 24) + ((x & 0xFFF) << 12) + (z & 0xFFF);
+		*/
 	}
 	
 	@Override
 	public boolean equals(Object o) {
 		RealFluidsBlock rfb = null;
-		if(o instanceof RealFluidsBlock) {
+		if((o != null) && (o instanceof RealFluidsBlock)) {
 			rfb = (RealFluidsBlock)o;
-			return ((world == null) || (world == rfb.world)) &&
-			       (x == rfb.x) &&
-				   (y == rfb.y) &&
-				   (z == rfb.z);
+			return ((location.getWorld() == null) || (location.getWorld() == rfb.location.getWorld())) &&
+			       location.equals(rfb.location) && 
+				   (fluidLevel == rfb.fluidLevel);
 		}
 		return false;
 	}
