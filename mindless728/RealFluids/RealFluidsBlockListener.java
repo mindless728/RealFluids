@@ -39,6 +39,9 @@ public class RealFluidsBlockListener extends BlockListener {
 		//try to remove a flow event at that location if it can't
 		else
 			rfblock.setLevel(0);
+			
+		//check for block flow adjacent to block placement
+		checkForAdjacentBlockUpdate(event.getBlock());
     }
     
     @Override
@@ -49,17 +52,21 @@ public class RealFluidsBlockListener extends BlockListener {
 	
 	@Override
 	public void onBlockDamage(BlockDamageEvent event) {
-		RealFluidsBlock rfb = new RealFluidsBlock(event.getBlock().getLocation(),0);
+		if(event.getDamageLevel() == BlockDamageLevel.STOPPED) {
+			checkForAdjacentBlockUpdate(event.getBlock());
+		}
+	}
+	
+	private void checkForAdjacentBlockUpdate(Block b) {
+		RealFluidsBlock rfb = new RealFluidsBlock(b.getLocation(),0);
 		int tempId = 0;
 		//System.out.println("Block Damaged: "+event.getDamageLevel());
-		
-		if(event.getDamageLevel() == BlockDamageLevel.STOPPED) {
-			//System.out.println("Block Broken: "+rfb.getTypeId());
-			for(RealFluidsBlock block : plugin.getAdjacentBlocks(rfb)) {
-				tempId = block.getTypeId();
-				//System.out.println("Block Adjacent: "+tempId);
-				if(tempId >= 8 && tempId <= 11)
-					plugin.addFlowEvent(block);
+		//System.out.println("Block Broken: "+rfb.getTypeId());
+		for(RealFluidsBlock block : plugin.getAdjacentBlocks(rfb)) {
+			tempId = block.getTypeId();
+			//System.out.println("Block Adjacent: "+tempId);
+			if(tempId >= 8 && tempId <= 11) {
+				plugin.addFlowEvent(block);
 			}
 		}
 	}

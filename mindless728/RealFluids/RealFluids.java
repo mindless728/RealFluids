@@ -8,6 +8,7 @@ package mindless728.RealFluids;
 import org.bukkit.block.Block;
 import org.bukkit.event.Event.Priority;
 import org.bukkit.event.Event.Type;
+import org.bukkit.inventory.ItemStack;
 import org.bukkit.Location;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.plugin.PluginDescriptionFile;
@@ -32,7 +33,6 @@ public class RealFluids extends JavaPlugin implements Runnable {
 	LinkedHashSet<RealFlowEvent> flowEvents;
 	HashMap<Location,RealFluidsBlock> blockData;
 	Location tempLoc;
-	//RealFluidsBlock tempBlock;
 	
     int waterStartLevel = 2000;
 	int lavaStartLevel = 1000;
@@ -49,7 +49,6 @@ public class RealFluids extends JavaPlugin implements Runnable {
 		
 		RealFlowEvent.setPlugin(this);
 		tempLoc = new Location(null,0,0,0);
-		//tempBlock = new RealFluidsBlock(null,0,0,0,0);
     }
     
     public void onEnable() {
@@ -72,10 +71,13 @@ public class RealFluids extends JavaPlugin implements Runnable {
 	}
 	
 	public boolean isOverwrittable(int typeId) {
-		return typeId == 0;
+		return ((typeId == 0) || (typeId == 78));
 	}
 	
 	public void overwriteBlock(RealFluidsBlock rfb, int typeId) {
+		int oldId = rfb.getTypeId();
+		if(oldId == 78)
+			rfb.getWorld().dropItemNaturally(rfb.getLocation(),new ItemStack(78,1));
 		rfb.setTypeId(typeId);
 	}
 	
@@ -85,10 +87,6 @@ public class RealFluids extends JavaPlugin implements Runnable {
 		tempLoc.setY(y);
 		tempLoc.setZ(z);
 		return getBlock(tempLoc);
-		/*
-		tempBlock.setLocation(x,y,z);
-		return getBlock(tempBlock, world);
-		*/
 	}
 	
 	public RealFluidsBlock getBlock(Location loc) {
@@ -113,46 +111,14 @@ public class RealFluids extends JavaPlugin implements Runnable {
 		return rfb;
 	}
 	
-	/*
-	public RealFluidsBlock getBlock(RealFluidsBlock lookup, World world) {
-		RealFluidsBlock block = null;
-		int blockId = 0;
-		
-		if(blockData.containsKey(lookup)) {
-			block = blockData.get(lookup);
-		} else {
-			if(lookup.getY() >= 0 && lookup.getY() <= 127) {
-				block = new RealFluidsBlock(world, lookup.getX(), lookup.getY(), lookup.getZ(), 0);
-				blockId = block.getTypeId();
-				if(blockId == 8 || blockId == 9)
-					block.setLevel(waterStartLevel);
-				else if(blockId == 10 || blockId == 11)
-					block.setLevel(lavaStartLevel);
-				blockData.put(block, block);
-			}
-		}
-		
-		return block;
-		
-	}
-	*/
-	
 	public RealFluidsBlock getAboveBlock(RealFluidsBlock block) {
 		Location loc = block.getLocation();
 		return getBlock(loc.getBlockX(), loc.getBlockY()+1, loc.getBlockZ(), loc.getWorld());
-		/*
-		tempBlock.setLocation(block.getX(), block.getY()+1, block.getZ());
-		return getBlock(tempBlock, block.getWorld());
-		*/
 	}
 	
 	public RealFluidsBlock getBelowBlock(RealFluidsBlock block) {
 		Location loc = block.getLocation();
 		return getBlock(loc.getBlockX(), loc.getBlockY()-1, loc.getBlockZ(), loc.getWorld());
-		/*
-		tempBlock.setLocation(block.getX(), block.getY()-1, block.getZ());
-		return getBlock(tempBlock, block.getWorld());
-		*/
 	}
 	
 	public LinkedList<RealFluidsBlock> getHorizontalAdjacentBlocks(RealFluidsBlock block) {
@@ -187,22 +153,6 @@ public class RealFluids extends JavaPlugin implements Runnable {
 		return lrfb;
 	}
 	
-	/*
-	public RealFluidsBlock[][] get3x3Blocks(RealFluidsBlock block) {
-		RealFluidsBlock[][] blocks = new RealFluidsBlock[3][3];
-		for(int i = -1; i < 2; ++i) {
-			for(int j = -1; j < 2; ++j) {
-				if(i == 0 && j == 0)
-					blocks[i+1][j+1] = block;
-				else {
-					tempBlock.setLocation(block.getX()+j, block.getY(), block.getZ()+i);
-					blocks[i+1][j+1] = getBlock(tempBlock, block.getWorld());
-				}
-			}
-		}
-		return blocks;
-	}*/
-	
 	public int getBlockAverage(RealFluidsBlock source, LinkedList<RealFluidsBlock> lrfb) {
 		int ave = source.getLevel();
 		int fluids = 1;
@@ -221,51 +171,6 @@ public class RealFluids extends JavaPlugin implements Runnable {
 		return ave/fluids;
 	}
 	
-	/*
-	public int get3x3Average(RealFluidsBlock[][] blocks) {
-		int ave = 0;
-		int fluids = 0;
-		RealFluidsBlock center = blocks[1][1];
-		
-		for(int i = -1; i < 2; ++i) {
-			for(int j = -1; j < 2; ++j) {
-				if((i == j || i == -j) && (i != 0 || j != 0))
-					continue;
-				//System.out.println("i: "+i+", j: "+j+", type: "+blocks[i+1][j+1].getTypeId());
-				if((blocks[i+1][j+1].getTypeId() == 0) || sameFluid(blocks[i+1][j+1].getTypeId(), center.getTypeId())) {
-					ave += blocks[i+1][j+1].getLevel();
-					++fluids;
-				} else if(blocks[i+1][j+1].getTypeId() == 19)
-					++fluids;
-			}
-		}
-		
-		//if(fluids != 0 && center.getY() >= 64)
-			//System.out.println("Amount: "+ave+", Blocks: "+fluids+", Ave: "+ave/fluids);
-		
-		if(fluids != 0)
-			return ave / fluids;
-		return -1;
-	}*/
-	
-	/*
-	public RealFluidsBlock[][][] get3x3x3Blocks(RealFluidsBlock block) {
-		RealFluidsBlock[][][] blocks = new RealFluidsBlock[3][3][3];
-		for(int i = -1; i < 2; ++i) {
-			for(int j = -1; j < 2; ++j) {
-				for(int k = -1; k < 2; ++k) {
-					if(i == 0 && j == 0 && k == 0)
-						blocks[i+1][j+1][k+1] = block;
-					else {
-						tempBlock.setLocation(block.getX()+k, block.getY()+i, block.getZ()+j);
-						blocks[i+1][j+1][k+1] = getBlock(tempBlock, block.getWorld());
-					}
-				}
-			}
-		}
-		return blocks;
-	}*/
-	
 	public boolean blockCanFlowDown(RealFluidsBlock block) {
 		RealFluidsBlock below = getBelowBlock(block);
 		if(below == null)
@@ -275,7 +180,7 @@ public class RealFluids extends JavaPlugin implements Runnable {
 		int belowId = below.getTypeId();
 		int startLevel = ((blockId == 8 || blockId == 9) ? waterStartLevel : lavaStartLevel);
 		
-		if((belowId == 0 || sameFluid(blockId, belowId)) && (below.getLevel() < startLevel) && block.getLevel() != 0)
+		if((isOverwrittable(belowId) || sameFluid(blockId, belowId)) && (below.getLevel() < startLevel) && block.getLevel() != 0)
 			return true;
 		
 		return false;
@@ -307,6 +212,7 @@ public class RealFluids extends JavaPlugin implements Runnable {
 	
 	public void flowHorizontal(RealFluidsBlock block) {
 		LinkedList<RealFluidsBlock> lrfb = getHorizontalAdjacentBlocks(block);
+		RealFluidsBlock above = getAboveBlock(block);
 		int blockId = block.getTypeId();
 		int tempId = 0;
 		int ave = getBlockAverage(block,lrfb);
@@ -333,48 +239,13 @@ public class RealFluids extends JavaPlugin implements Runnable {
 		}
 		if(ave != 0)
 			flowEvents.add(new RealFlowEvent(block));
-		/*
-		RealFluidsBlock[][] blocks = get3x3Blocks(block);
-		int blockId = block.getTypeId();
-		int ave = get3x3Average(blocks);
-		int diff;
-		int minDiff = (int)(minimumDifferenceLevelFraction * block.getLevel());
-		
-		if(ave == -1) {
-			//System.out.println("Ave: "+ave);
-			return;
+		if(blockCanFlowDown(above)) {
+			addFlowEvent(above);
 		}
-		
-		for(int i = -1; i < 2; ++i) {
-			for(int j = -1; j < 2; ++j) {
-				if((i == j) || (i == -j))
-					continue;
-				//System.out.println("Start: "+blocks[i+1][j+1].getLevel()+", Ave: "+ave);
-				diff = ave - blocks[i+1][j+1].getLevel();
-				minDiff = (int)(minimumDifferenceLevelFraction * blocks[i+1][j+1].getLevel());
-				if((Math.abs(diff) > minDiff) && (blocks[i+1][j+1].getTypeId() == 0 || blocks[i+1][j+1].getTypeId()==19 || sameFluid(blocks[i+1][j+1].getTypeId(),blockId))) {
-					blocks[i+1][j+1].setLevel(blocks[i+1][j+1].getLevel()+diff);
-					if(blocks[i+1][j+1].getTypeId() == 0)
-						blocks[i+1][j+1].setTypeId(blockId);
-					block.setLevel(block.getLevel()-diff);
-					if(ave != 0)
-						flowEvents.add(new RealFlowEvent(blocks[i+1][j+1]));
-				}
-			}
-		}
-		
-		if(ave == 0 || block.getLevel() == 0) {
-			block.setLevel(0);
-			block.setTypeId(0);
-		}
-		if(ave != 0)
-			flowEvents.add(new RealFlowEvent(block));
-		
-		//while(true){}
-		*/
 	}
 	
 	public void flowDown(RealFluidsBlock block) {
+		LinkedList<RealFluidsBlock> lrfb = getHorizontalAdjacentBlocks(block);
 		RealFluidsBlock below = getBelowBlock(block);
 		int flowAmount = ((int)(flowDownFraction*block.getLevel()));
 		int startLevel = ((block.getTypeId() == 8 || block.getTypeId() == 9)?waterStartLevel:lavaStartLevel);
@@ -386,12 +257,17 @@ public class RealFluids extends JavaPlugin implements Runnable {
 		
 		below.setLevel(below.getLevel()+flowAmount);
 		block.setLevel(block.getLevel()-flowAmount);
-		below.setTypeId(block.getTypeId());
+		overwriteBlock(below,block.getTypeId());
 		if(block.getLevel() == 0)
 			block.setTypeId(0);
 			
 		flowEvents.add(new RealFlowEvent(below));
 		flowEvents.add(new RealFlowEvent(block));
+		
+		for(RealFluidsBlock rfb : lrfb) {
+			if(sameFluid(block.getTypeId(), rfb.getTypeId()))
+				addFlowEvent(rfb);
+		}
 	}
 	
 	public void flowUp(RealFluidsBlock block) {
