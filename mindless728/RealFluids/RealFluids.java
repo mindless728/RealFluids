@@ -66,6 +66,14 @@ public class RealFluids extends JavaPlugin implements Runnable {
         System.out.println(getDescription().getName()+" version "+getDescription().getVersion()+" disabled");
     }
 	
+	public int getWaterStartLevel() {
+		return waterStartLevel;
+	}
+	
+	public int getLavaStartLevel() {
+		return lavaStartLevel;
+	}
+	
 	public void addFlowEvent(RealFluidsBlock block) {
 		flowEvents.add(new RealFlowEvent(block));
 	}
