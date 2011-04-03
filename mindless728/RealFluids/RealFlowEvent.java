@@ -41,7 +41,7 @@ public class RealFlowEvent extends Event implements Cancellable {
 			if(typeId == 8 || typeId == 9)
 				flow = RealFluidsFlowType.WATER_UP;
 			else
-				flow = RealFluidsFlowType.WATER_UP;
+				flow = RealFluidsFlowType.LAVA_UP;
 		}
 		
 		else {

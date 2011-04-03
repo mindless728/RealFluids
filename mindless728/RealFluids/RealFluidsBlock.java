@@ -4,21 +4,35 @@ import org.bukkit.block.Block;
 import org.bukkit.Location;
 import org.bukkit.World;
 
+import mindless728.BlockStorage.PluginBlockStorage;
+
 public class RealFluidsBlock {
-	Location location;
-	private int fluidLevel;
+	private static PluginBlockStorage<Integer> storage;
+	private static RealFluids plugin;
+	private Location location;
 	
-	public RealFluidsBlock(Location loc, int level) {
-		this(loc.getWorld(), loc.getBlockX(), loc.getBlockY(), loc.getBlockZ(), level);
+	public RealFluidsBlock(Location loc) {
+		this(loc.getWorld(), loc.getBlockX(), loc.getBlockY(), loc.getBlockZ());
 	}
 	
-	public RealFluidsBlock(World w, int x, int y, int z, int level) {
+	public RealFluidsBlock(World w, int x, int y, int z) {
 	    location = new Location(w,x,y,z);
-		fluidLevel = level;
+	}
+	
+	public static void setStorage(PluginBlockStorage<Integer> pbs) {
+		storage = pbs;
+	}
+	
+	public static void setPlugin(RealFluids p) {
+		plugin = p;
 	}
 	
 	public Location getLocation() {
 		return location;
+	}
+	
+	public Block getBlock() {
+		return location.getBlock();
 	}
 	
 	public int getX() {
@@ -46,12 +60,23 @@ public class RealFluidsBlock {
 	}
 	
 	public int getLevel() {
-	    return fluidLevel;
+		Integer i = storage.getData(location);
+		int id = getTypeId();
+	    if(i == null) {
+			if(id == 8 || id == 9)
+				setLevel(plugin.getWaterStartLevel());
+			else if(id == 10 || id == 11)
+				setLevel(plugin.getLavaStartLevel());
+			else
+				setLevel(0);
+			i = storage.getData(location);
+		}
+		return i;
 	}
 	
 	public void setLevel(int level) {
 		if(getTypeId() != 19)
-			fluidLevel = level;
+			storage.setData(location,level);
 	}
 	
 	public int getTypeId() {
@@ -79,8 +104,7 @@ public class RealFluidsBlock {
 		if((o != null) && (o instanceof RealFluidsBlock)) {
 			rfb = (RealFluidsBlock)o;
 			return ((location.getWorld() == null) || (location.getWorld() == rfb.location.getWorld())) &&
-			       location.equals(rfb.location) && 
-				   (fluidLevel == rfb.fluidLevel);
+			       location.equals(rfb.location);
 		}
 		return false;
 	}
