@@ -56,22 +56,27 @@ public class RealFluids extends JavaPlugin implements Runnable {
     }
     
     public void onEnable() {
-		Object o = getServer().getPluginManager().getPlugin("BlockStorage");
-		if(o == null || !(o instanceof BlockStorage)) {
-			System.out.println("BlockStorage not found, disabling...");
-			getServer().getPluginManager().disablePlugin(this);
-			return;
-		}
-		storage = ((BlockStorage)o).<Integer>getPluginBlockStorage(this, 1024);
-		RealFluidsBlock.setStorage(storage);
-		RealFluidsBlock.setPlugin(this);
+	Object o = getServer().getPluginManager().getPlugin("BlockStorage");
+	if(o == null || !(o instanceof BlockStorage)) {
+		System.out.println("BlockStorage not found, disabling...");
+		getServer().getPluginManager().disablePlugin(this);
+		return;
+	}
+	storage = ((BlockStorage)o).<Integer>getPluginBlockStorage(this, 1024);
+	if(storage == null) {
+		System.out.println("Could not grab a storage object, disabling...");
+		getServer().getPluginManager().disablePlugin(this);
+		return;
+	}
+	RealFluidsBlock.setStorage(storage);
+	RealFluidsBlock.setPlugin(this);
 	
         scheduler = this.getServer().getScheduler();
         scheduler.scheduleSyncRepeatingTask(this, this, 1, repeatRate);
         
         getServer().getPluginManager().registerEvent(Type.BLOCK_PLACE, blockListener, Priority.Low, this);
         getServer().getPluginManager().registerEvent(Type.BLOCK_FROMTO, blockListener, Priority.Low, this);
-		getServer().getPluginManager().registerEvent(Type.BLOCK_BREAK, blockListener, Priority.Low, this);
+	getServer().getPluginManager().registerEvent(Type.BLOCK_BREAK, blockListener, Priority.Low, this);
         
         System.out.println(getDescription().getName()+" version "+getDescription().getVersion()+" enabled");
     }
@@ -158,11 +163,15 @@ public class RealFluids extends JavaPlugin implements Runnable {
 	
 	public RealFluidsBlock getAboveBlock(RealFluidsBlock block) {
 		Location loc = block.getLocation();
+		if(loc.getBlockY() == 127)
+			return null;
 		return getBlock(loc.getBlockX(), loc.getBlockY()+1, loc.getBlockZ(), loc.getWorld());
 	}
 	
 	public RealFluidsBlock getBelowBlock(RealFluidsBlock block) {
 		Location loc = block.getLocation();
+		if(loc.getBlockY() == 0)
+			return null;
 		return getBlock(loc.getBlockX(), loc.getBlockY()-1, loc.getBlockZ(), loc.getWorld());
 	}
 	
@@ -217,6 +226,9 @@ public class RealFluids extends JavaPlugin implements Runnable {
 	}
 	
 	public boolean blockCanFlowDown(RealFluidsBlock block) {
+		if(block == null)
+			return false;
+
 		RealFluidsBlock below = getBelowBlock(block);
 		
 		if(below == null || block.getY() == 0)
@@ -233,7 +245,11 @@ public class RealFluids extends JavaPlugin implements Runnable {
 	}
 	
 	public boolean blockCanFlowUp(RealFluidsBlock block) {
+		if(block == null)
+			return false;
+
 		RealFluidsBlock above = getAboveBlock(block);
+
 		if(above == null)
 			return false;
 			
