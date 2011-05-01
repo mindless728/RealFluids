@@ -77,6 +77,8 @@ public class RealFluidsBlock {
 	public void setLevel(int level) {
 		if(getTypeId() != 19)
 			storage.setData(location,level);
+		else
+			storage.setData(location,0);
 	}
 	
 	public int getTypeId() {

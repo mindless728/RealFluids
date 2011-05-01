@@ -21,10 +21,16 @@ import mindless728.BlockStorage.BlockStorage;
 import mindless728.BlockStorage.PluginBlockStorage;
 
 import java.io.File;
+import java.io.BufferedWriter;
+import java.io.FileWriter;
+import java.io.FileNotFoundException;
+import java.io.IOException;
 
+import java.util.Map;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.LinkedList;
+import java.util.Scanner;
 
 /**
  *
@@ -37,6 +43,7 @@ public class RealFluids extends JavaPlugin implements Runnable {
 	PluginBlockStorage<Integer> storage;
 	//HashMap<Location,RealFluidsBlock> blockData;
 	Location tempLoc;
+	String dataFile;
 	
     int waterStartLevel = 2000;
 	int lavaStartLevel = 1000;
@@ -45,10 +52,15 @@ public class RealFluids extends JavaPlugin implements Runnable {
 	long maxFlowTimePerRepeat = 25000000;
     double simsPerRepeatFraction = 0.5;
     double flowDownFraction = 0.5;
+	int chunkCacheSize = 1024;
+	HashMap<Integer,Boolean> waterOverwriteList;
+	HashMap<Integer,Boolean> lavaOverwriteList;
     
     public RealFluids() {
         blockListener = new RealFluidsBlockListener(this);
 		flowEvents = new LinkedHashSet<RealFlowEvent>();
+		waterOverwriteList = new HashMap<Integer,Boolean>();
+		lavaOverwriteList = new HashMap<Integer,Boolean>();
 		//blockData = new HashMap<Location,RealFluidsBlock>();
 		
 		RealFlowEvent.setPlugin(this);
@@ -56,27 +68,31 @@ public class RealFluids extends JavaPlugin implements Runnable {
     }
     
     public void onEnable() {
-	Object o = getServer().getPluginManager().getPlugin("BlockStorage");
-	if(o == null || !(o instanceof BlockStorage)) {
-		System.out.println("BlockStorage not found, disabling...");
-		getServer().getPluginManager().disablePlugin(this);
-		return;
-	}
-	storage = ((BlockStorage)o).<Integer>getPluginBlockStorage(this, 1024);
-	if(storage == null) {
-		System.out.println("Could not grab a storage object, disabling...");
-		getServer().getPluginManager().disablePlugin(this);
-		return;
-	}
-	RealFluidsBlock.setStorage(storage);
-	RealFluidsBlock.setPlugin(this);
+		Object o = getServer().getPluginManager().getPlugin("BlockStorage");
+		if(o == null || !(o instanceof BlockStorage)) {
+			System.out.println("BlockStorage not found, disabling...");
+			getServer().getPluginManager().disablePlugin(this);
+			return;
+		}
+		storage = ((BlockStorage)o).<Integer>getPluginBlockStorage(this, chunkCacheSize);
+		if(storage == null) {
+			System.out.println("Could not grab a storage object, disabling...");
+			getServer().getPluginManager().disablePlugin(this);
+			return;
+		}
+		RealFluidsBlock.setStorage(storage);
+		RealFluidsBlock.setPlugin(this);
+
+		getDataFolder().mkdir();
+		dataFile = getDataFolder().getPath()+File.separatorChar+"RealFluids.txt";
+		loadProperties();
 	
-        scheduler = this.getServer().getScheduler();
-        scheduler.scheduleSyncRepeatingTask(this, this, 1, repeatRate);
+    	scheduler = this.getServer().getScheduler();
+    	scheduler.scheduleSyncRepeatingTask(this, this, 1, repeatRate);
         
-        getServer().getPluginManager().registerEvent(Type.BLOCK_PLACE, blockListener, Priority.Low, this);
-        getServer().getPluginManager().registerEvent(Type.BLOCK_FROMTO, blockListener, Priority.Low, this);
-	getServer().getPluginManager().registerEvent(Type.BLOCK_BREAK, blockListener, Priority.Low, this);
+    	getServer().getPluginManager().registerEvent(Type.BLOCK_PLACE, blockListener, Priority.Low, this);
+    	getServer().getPluginManager().registerEvent(Type.BLOCK_FROMTO, blockListener, Priority.Low, this);
+		getServer().getPluginManager().registerEvent(Type.BLOCK_BREAK, blockListener, Priority.Low, this);
         
         System.out.println(getDescription().getName()+" version "+getDescription().getVersion()+" enabled");
     }
@@ -84,6 +100,85 @@ public class RealFluids extends JavaPlugin implements Runnable {
     public void onDisable() {
         System.out.println(getDescription().getName()+" version "+getDescription().getVersion()+" disabled");
     }
+
+	public void loadProperties() {
+		String s;
+		int i;
+		boolean b;
+		Scanner scanner;
+		try {
+			scanner = new Scanner(new File(dataFile));
+			while(scanner.hasNext()) {
+				s = scanner.next();
+				if(s.equals("WaterStartLevel:"))
+					waterStartLevel = scanner.nextInt();
+				else if(s.equals("LavaStartLevel:"))
+					lavaStartLevel = scanner.nextInt();
+				else if(s.equals("MinimumDifferenceLevelFraction:"))
+					minimumDifferenceLevelFraction = scanner.nextDouble();
+				else if(s.equals("RepeatRate:"))
+					repeatRate = scanner.nextInt();
+				else if(s.equals("MaxFlowTimePerRepeat:"))
+					maxFlowTimePerRepeat = scanner.nextLong();
+				else if(s.equals("SimsPerRepeatFraction:"))
+					simsPerRepeatFraction = scanner.nextDouble();
+				else if(s.equals("FlowDownFraction:"))
+					flowDownFraction = scanner.nextDouble();
+				else if(s.equals("ChunkCacheSize:"))
+					chunkCacheSize = scanner.nextInt();
+				else if(s.equals("WaterOverwriteList:")) {
+					while(scanner.hasNextInt()) {
+						i = scanner.nextInt();
+						b = scanner.nextBoolean();
+						waterOverwriteList.put(i,b);
+					}
+				} else if(s.equals("LavaOverwriteList:")) {
+					while(scanner.hasNextInt()) {
+						i = scanner.nextInt();
+						b = scanner.nextBoolean();
+						lavaOverwriteList.put(i,b);
+					}
+				}
+			}
+		} catch(FileNotFoundException fnfe) {
+			saveProperties();
+		} catch(Exception e) {
+			System.out.println("*** RealFluids: Error in configuration file ***");
+		}
+	}
+
+	public void saveProperties() {
+		try {
+			BufferedWriter writer = new BufferedWriter(new FileWriter(dataFile));
+			writer.write("WaterStartLevel: "+waterStartLevel);
+			writer.newLine();
+			writer.write("LavaStartLevel: "+lavaStartLevel);
+			writer.newLine();
+			writer.write("MinimumDifferenceLevelFraction: "+minimumDifferenceLevelFraction);
+			writer.newLine();
+			writer.write("RepeatRate: "+repeatRate);
+			writer.newLine();
+			writer.write("MaxFlowTimePerRepeat: "+maxFlowTimePerRepeat);
+			writer.newLine();
+			writer.write("SimsPerRepeatFraction: "+simsPerRepeatFraction);
+			writer.newLine();
+			writer.write("FlowDownFraction: "+flowDownFraction);
+			writer.newLine();
+			writer.write("ChunkCacheSize: "+chunkCacheSize);
+			writer.newLine();
+			writer.write("WaterOverwriteList:");
+			for(Map.Entry e : waterOverwriteList.entrySet()) {
+				writer.write(" "+e.getKey()+" "+e.getValue());
+			}
+			writer.newLine();
+			writer.write("LavaOverwriteList:");
+			for(Map.Entry e : lavaOverwriteList.entrySet()) {
+				writer.write(" "+e.getKey()+" "+e.getValue());
+			}
+			writer.newLine();
+			writer.close();
+		} catch(IOException ioe) {}
+	}
 	
 	public int getWaterStartLevel() {
 		return waterStartLevel;
@@ -97,15 +192,22 @@ public class RealFluids extends JavaPlugin implements Runnable {
 		flowEvents.add(new RealFlowEvent(block));
 	}
 	
-	public boolean isOverwrittable(int typeId) {
-		return ((typeId == 0) || (typeId == 78));
+	public boolean isOverwrittable(int fluidType, int typeId) {
+		if(fluidType == 8 || fluidType == 9)
+			return waterOverwriteList.containsKey(typeId);
+		else
+			return lavaOverwriteList.containsKey(typeId);
 	}
 	
-	public void overwriteBlock(RealFluidsBlock rfb, int typeId) {
+	public void overwriteBlock(RealFluidsBlock rfb, int fluidId) {
 		int oldId = rfb.getTypeId();
-		if(oldId == 78)
-			rfb.getWorld().dropItemNaturally(rfb.getLocation(),new ItemStack(78,1));
-		rfb.setTypeId(typeId);
+		try {
+			if((fluidId == 8 || fluidId == 9) && waterOverwriteList.get(oldId))
+				rfb.getWorld().dropItemNaturally(rfb.getLocation(), new ItemStack(oldId,1));
+			else if((fluidId == 10 || fluidId == 11) && lavaOverwriteList.get(oldId))
+				rfb.getWorld().dropItemNaturally(rfb.getLocation(), new ItemStack(oldId,1));
+		} catch(Exception e) {}
+		rfb.setTypeId(fluidId);
 	}
 	
 	public RealFluidsBlock getBlock(int x, int y, int z, World world) {
@@ -215,7 +317,7 @@ public class RealFluids extends JavaPlugin implements Runnable {
 		
 		for(RealFluidsBlock rfb : lrfb) {
 			tempId = rfb.getTypeId();
-			if(isOverwrittable(tempId) || sameFluid(sourceId, tempId)) {
+			if(isOverwrittable(sourceId, tempId) || sameFluid(sourceId, tempId)) {
 				ave += rfb.getLevel();
 				++fluids;
 			} else if(tempId == 19)
@@ -238,7 +340,7 @@ public class RealFluids extends JavaPlugin implements Runnable {
 		int belowId = below.getTypeId();
 		int startLevel = ((blockId == 8 || blockId == 9) ? waterStartLevel : lavaStartLevel);
 		
-		if((isOverwrittable(belowId) || sameFluid(blockId, belowId)) && (below.getLevel() < startLevel) && block.getLevel() != 0)
+		if((isOverwrittable(blockId, belowId) || sameFluid(blockId, belowId)) && (below.getLevel() < startLevel) && block.getLevel() != 0)
 			return true;
 		
 		return false;
@@ -300,12 +402,12 @@ public class RealFluids extends JavaPlugin implements Runnable {
 			diff = ave - rfb.getLevel();
 			minDiff = (int)(minimumDifferenceLevelFraction * rfb.getLevel());
 			tempId = rfb.getTypeId();
-			if((Math.abs(diff) > minDiff) && (isOverwrittable(tempId) || tempId == 19 || sameFluid(tempId, blockId))) {
+			if((Math.abs(diff) > minDiff) && (isOverwrittable(blockId, tempId) || tempId == 19 || sameFluid(tempId, blockId))) {
 				rfb.setLevel(rfb.getLevel()+diff);
 				//rfb.getBlock().setData((byte)getMetaData(rfb.getLevel()));
 				//if(rfb.getLevel() == 0)
 					//rfb.setTypeId(0);
-				if(isOverwrittable(tempId))
+				if(isOverwrittable(blockId, tempId))
 					overwriteBlock(rfb,blockId);
 				block.setLevel(block.getLevel()-diff);
 				//block.getBlock().setData((byte)getMetaData(block.getLevel()));
@@ -388,8 +490,8 @@ public class RealFluids extends JavaPlugin implements Runnable {
 			
 			flow = front.getFlow();
 			if(flow == RealFluidsFlowType.WATER_HORIZONTAL ||
-			   flow == RealFluidsFlowType.LAVA_HORIZONTAL ||
-			   flow == RealFluidsFlowType.AIR_HORIZONTAL) {
+				flow == RealFluidsFlowType.LAVA_HORIZONTAL ||
+				flow == RealFluidsFlowType.AIR_HORIZONTAL) {
 				flowHorizontal(front.getBlock());
 			} else if(flow == RealFluidsFlowType.WATER_DOWN || flow == RealFluidsFlowType.LAVA_DOWN) {
 				flowDown(front.getBlock());

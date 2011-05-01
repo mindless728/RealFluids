@@ -29,7 +29,7 @@ public class RealFluidsBlockListener extends BlockListener {
 		RealFluidsBlock rfblock = plugin.getBlock(block.getLocation());
 		//add flow event if block can flow
 		if(block.getTypeId() == 8 || block.getTypeId() == 9 ||
-		   block.getTypeId() == 10 || block.getTypeId() == 11) {
+			block.getTypeId() == 10 || block.getTypeId() == 11) {
 			if(block.getTypeId() == 8 || block.getTypeId() == 9)
 				rfblock.setLevel(plugin.waterStartLevel);
 			else

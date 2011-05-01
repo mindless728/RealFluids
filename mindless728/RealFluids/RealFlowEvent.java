@@ -5,10 +5,11 @@ import org.bukkit.event.Cancellable;
 
 public class RealFlowEvent extends Event implements Cancellable {
 	private static RealFluids plugin;
-    private RealFluidsBlock block;
+	private RealFluidsBlock block;
 	private RealFluidsFlowType flow;
 	boolean cancelled;
 	private static final long serialVersionUID = 1L;
+	private long timeCreated;
 	
 	RealFlowEvent(RealFluidsBlock b) {
 		super("RealFlowEvent");
@@ -22,7 +23,7 @@ public class RealFlowEvent extends Event implements Cancellable {
 	}
 	
 	public RealFluidsBlock getBlock() {
-	    return block;
+		return block;
 	}
 	
 	public RealFluidsFlowType getFlow() {
@@ -32,7 +33,7 @@ public class RealFlowEvent extends Event implements Cancellable {
 		}
 		else if(plugin.blockCanFlowDown(block)) {
 			if(typeId == 8 || typeId == 9)
-			    flow = RealFluidsFlowType.WATER_DOWN;
+				flow = RealFluidsFlowType.WATER_DOWN;
 			else
 				flow = RealFluidsFlowType.LAVA_DOWN;
 		}
