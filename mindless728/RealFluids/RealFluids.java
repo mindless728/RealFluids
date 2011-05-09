@@ -39,9 +39,9 @@ import java.util.Scanner;
 public class RealFluids extends JavaPlugin implements Runnable {
     BukkitScheduler scheduler;
     RealFluidsBlockListener blockListener;
+	RealFluidsPlayerListener playerListener;
 	LinkedHashSet<RealFlowEvent> flowEvents;
 	PluginBlockStorage<Integer> storage;
-	//HashMap<Location,RealFluidsBlock> blockData;
 	Location tempLoc;
 	String dataFile;
 	
@@ -58,10 +58,10 @@ public class RealFluids extends JavaPlugin implements Runnable {
     
     public RealFluids() {
         blockListener = new RealFluidsBlockListener(this);
+		playerListener = new RealFluidsPlayerListener(this);
 		flowEvents = new LinkedHashSet<RealFlowEvent>();
 		waterOverwriteList = new HashMap<Integer,Boolean>();
 		lavaOverwriteList = new HashMap<Integer,Boolean>();
-		//blockData = new HashMap<Location,RealFluidsBlock>();
 		
 		RealFlowEvent.setPlugin(this);
 		tempLoc = new Location(null,0,0,0);
@@ -93,6 +93,9 @@ public class RealFluids extends JavaPlugin implements Runnable {
     	getServer().getPluginManager().registerEvent(Type.BLOCK_PLACE, blockListener, Priority.Low, this);
     	getServer().getPluginManager().registerEvent(Type.BLOCK_FROMTO, blockListener, Priority.Low, this);
 		getServer().getPluginManager().registerEvent(Type.BLOCK_BREAK, blockListener, Priority.Low, this);
+
+		getServer().getPluginManager().registerEvent(Type.PLAYER_BUCKET_EMPTY, playerListener, Priority.Low, this);
+		getServer().getPluginManager().registerEvent(Type.PLAYER_BUCKET_FILL, playerListener, Priority.Low, this);
         
         System.out.println(getDescription().getName()+" version "+getDescription().getVersion()+" enabled");
     }
@@ -223,22 +226,6 @@ public class RealFluids extends JavaPlugin implements Runnable {
 		int blockId = 0;
 		
 		rfb = new RealFluidsBlock(loc);
-		
-		/*	
-		//if the block exists in the server get it
-		if(blockData.containsKey(loc)) {
-			rfb = blockData.get(loc);
-		//if not, create the block and assign data to the block
-		} else if(loc.getBlockY() >= 0 && loc.getBlockY() <= 127) {
-			rfb = new RealFluidsBlock(loc,0);
-			blockId = rfb.getTypeId();
-			//get starting level
-			if(blockId == 8 || blockId == 9)
-				rfb.setLevel(waterStartLevel);
-			else if(blockId == 10 || blockId == 11)
-				rfb.setLevel(lavaStartLevel);
-			blockData.put(rfb.getLocation(), rfb);
-		}*/
 		
 		return rfb;
 	}
