@@ -47,6 +47,7 @@ public class RealFluids extends JavaPlugin implements Runnable {
 	
     int waterStartLevel = 2000;
 	int lavaStartLevel = 1000;
+	int maxBucketLevel = 100;
     double minimumDifferenceLevelFraction = 0.05;
     int repeatRate = 1;
 	long maxFlowTimePerRepeat = 25000000;
@@ -94,8 +95,8 @@ public class RealFluids extends JavaPlugin implements Runnable {
     	getServer().getPluginManager().registerEvent(Type.BLOCK_FROMTO, blockListener, Priority.Low, this);
 		getServer().getPluginManager().registerEvent(Type.BLOCK_BREAK, blockListener, Priority.Low, this);
 
-		getServer().getPluginManager().registerEvent(Type.PLAYER_BUCKET_EMPTY, playerListener, Priority.Low, this);
-		getServer().getPluginManager().registerEvent(Type.PLAYER_BUCKET_FILL, playerListener, Priority.Low, this);
+		getServer().getPluginManager().registerEvent(Type.PLAYER_BUCKET_EMPTY, playerListener, Priority.High, this);
+		getServer().getPluginManager().registerEvent(Type.PLAYER_BUCKET_FILL, playerListener, Priority.High, this);
         
         System.out.println(getDescription().getName()+" version "+getDescription().getVersion()+" enabled");
     }
