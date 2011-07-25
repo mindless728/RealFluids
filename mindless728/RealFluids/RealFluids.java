@@ -45,15 +45,15 @@ public class RealFluids extends JavaPlugin implements Runnable {
 	Location tempLoc;
 	String dataFile;
 	
-    int waterStartLevel = 2000;
-	int lavaStartLevel = 1000;
+    int waterStartLevel = 200;
+	int lavaStartLevel = 100;
 	int maxBucketLevel = 100;
     double minimumDifferenceLevelFraction = 0.05;
-    int repeatRate = 1;
+    int repeatRate = 2;
 	long maxFlowTimePerRepeat = 25000000;
     double simsPerRepeatFraction = 0.5;
     double flowDownFraction = 0.5;
-	int chunkCacheSize = 1024;
+	int chunkCacheSize = 256;
 	HashMap<Integer,Boolean> waterOverwriteList;
 	HashMap<Integer,Boolean> lavaOverwriteList;
     
